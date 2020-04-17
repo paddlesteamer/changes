@@ -2,6 +2,7 @@ import os
 import sys
 import requests
 import argparse
+from bs4 import BeautifulSoup
 from requests.exceptions import Timeout
 from datetime import datetime
 from dotenv import load_dotenv
@@ -59,58 +60,46 @@ def main():
                         help='Verbose output')
     args = parser.parse_args()
 
-    # abort if an opening was found previously
-    if args.email or args.telegram:
-        try:
-            with open(os.getenv('LOCK_FILE')):
-                print(f"[{datetime.now()}]: Lock file exists, aborting...")
-            sys.exit(0)
-        except IOError:
-            pass
-
-    # set session & "remember-me" cookies
-    session = requests.Session()
-    jar = requests.cookies.RequestsCookieJar()
-    jar.set('SESSION', os.getenv('SESSION'))
-    jar.set('remember-me', os.getenv('REMEMBER_ME'))
-    session.cookies = jar
-
-    # make GET request to see if a delivery is available
     try:
-        r = session.get(os.getenv('URL'), timeout=5)
+        r = requests.get(os.getenv('URL'), timeout=5)
     except Timeout:
         print(f"[{datetime.now()}]: The request timed out.")
         sys.exit(1)
 
-    # send warning notification & terminate if cookies didn't work
-    if os.getenv('NOT_LOGGED_IN_KEYWORD') in r.text:
-        message = f"[{datetime.now()}]: Invalid session, could not check availability."
-        print(message)
-        if args.verbose:
-            print(f"\t{r.text}")
-        if args.email:
-            sendEmail("Invalid Session!", message)
-        if args.telegram:
-            sendTelegramMessage(message)
-        sys.exit(1)
+    bs = BeautifulSoup(r.text, features="html.parser")
+    div = bs.find(id="block-views-acik-cagrilar-view-block")
+    if div is None:
+        content = ""
+    else:
+        content = div.text.strip("\n")
 
-    # terminate script if it's not available
-    if os.getenv('NOT_AVAILABLE_KEYWORD') in r.text:
-        print(f"[{datetime.now()}]: Sanalmarket is not available.")
+    try:
+        with open(os.getenv('CONTENT_FILE'), "r") as f:
+            previousContent = f.read()
+    except:
+        previousContent = ""
+
+    if previousContent == content:
+        print(f"[{datetime.now()}]: All same.")
         if args.verbose:
-            print(f"\t{r.text}")
+            print(f"{content}")
         sys.exit(0)
 
-    # send notification if delivery is available
-    message = f"[{datetime.now()}]: Sanalmarket is now available:\n{r.text}"
-    if os.getenv('SHOPPING_CART_URL'):
-        message += f"\nShopping cart: {os.getenv('SHOPPING_CART_URL')}"
+    message = f"[{datetime.now()}]: There is a change: {os.getenv('URL')}\n"
+    message += f"{content}"
     print(message)
+
     if args.email:
-        sendEmail("Sanalmarket Available!", message)
+        sendEmail("Change!", message)
     if args.telegram:
         sendTelegramMessage(message)
 
+    try:
+        with open(os.getenv('CONTENT_FILE'), "w") as f:
+            f.write(content)
+    except:
+        print(f"[{datetime.now()}]: The content file could not be written.")
+        sys.exit(1)
 
 if __name__ == '__main__':
     main()
