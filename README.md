@@ -1,4 +1,4 @@
-# tbt-sm
+# ping-tbt
 This is a forked version of [ping-sm](https://github.com/utkuufuk/ping-sm). Run this script periodically as a cron job. It will check if there is a new call in [TUBITAK Funds](https://tubitak.gov.tr/tr/destekler/sanayi/ulusal-destek-programlari). 
 
 ## How it works
