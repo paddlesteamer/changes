@@ -1,7 +1,8 @@
+import importlib
 import json
 import pathlib
+from traceback import print_tb
 import requests
-from bs4 import BeautifulSoup
 from requests.exceptions import Timeout
 from datetime import datetime
 
@@ -26,61 +27,37 @@ def sendNotification(config: dict, title: str, message: str):
     except:
         print(f"[{datetime.now()}]: Home assistant request failed.")
 
+def runTargets(config: dict):
+    targetsPath = f"{pathlib.Path(__file__).parent.absolute()}/targets/"
 
-def check(config: dict):
-    try:
-        r = requests.get("https://www.alivex.com/order/participantlist/549", timeout=5)
-    except Timeout:
-        print(f"[{datetime.now()}]: The request timed out.")
-        return
-    except:
-        print(f"[{datetime.now()}]: An unknown error has occurred.")
-        return
+    for target in pathlib.Path(targetsPath).glob("*.py"):
+        module = f"targets.{target.name.rstrip('.py')}"
 
-    if r.status_code != 200:
-        print(f"[{datetime.now()}]: The request returned a status code of {r.status_code}.")
-        return
+        try:
+            m = importlib.import_module(module)
+        except:
+            print(f"[{datetime.now()}]: Failed to import {module}.")
+            print_tb(exc_info=True)
+            continue
 
-    bs = BeautifulSoup(r.text, features="html.parser")
-    matches = bs.select("tbody > tr")
+        res = None
+        try:
+            res = m.check()
+        except:
+            print(f"[{datetime.now()}]: Failed to run {module}.")
+            print_tb(exc_info=True)
+            continue
 
-    if len(matches) == 0:
-        print(f"[{datetime.now()}]: Unable to find number of entries.")
-        return
-
-    numEntries = str(len(matches))
-
-    try:
-        with open(config["content_file"], "r") as f:
-            previousMatch = f.read()
-    except:
-        previousMatch = ""
-
-    if previousMatch == numEntries:
-        print(f"[{datetime.now()}]: All same.")
-        return
-
-    # not first call
-    if previousMatch != "":
-        sendNotification(config, "Skyerciyes", f"{numEntries} participants.")
-
-    print(f"[{datetime.now()}]: {numEntries} participants.")
-
-    try:
-        with open(config["content_file"], "w") as f:
-            f.write(numEntries)
-    except:
-        print(f"[{datetime.now()}]: The content file could not be written.")
-        return
-
+        if res is not None:
+            sendNotification(config, res["title"], res["message"])
 
 def main():
-    configFilePath = f"{pathlib.Path(__file__).parent}/config.json"
+    configFilePath = f"{pathlib.Path(__file__).parent.absolute()}/config.json"
 
     with open(configFilePath, "r") as f:
         config = json.load(f)
 
-    check(config)
+    runTargets(config)
 
 if __name__ == '__main__':
     main()
