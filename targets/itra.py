@@ -52,7 +52,7 @@ def check():
     contentFile = "/tmp/itra-changes"
     try:
         with open(contentFile, "r") as f:
-            previousMatch = f.read()
+            previousPi = f.read()
     except:
         previousPi = ""
 
