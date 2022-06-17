@@ -1,105 +1,86 @@
+import json
 import os
-import sys
+from regex import W
 import requests
-import argparse
 from bs4 import BeautifulSoup
 from requests.exceptions import Timeout
 from datetime import datetime
-from dotenv import load_dotenv
 
+def sendNotification(config: dict, title: str, message: str):
+    haRestURL = f"{config['ha_url']}/api/services/notify/{config['ha_device']}"
 
-# a lock file will ensure that we won't spam ourselves with notifications
-def writeLockFile():
-    with open(os.getenv("LOCK_FILE"), "w") as f:
-        f.write("")
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {config['ha_token']}",
+    }
 
+    payload = {
+        "title": title,
+        "message": message,
+    }
 
-def sendEmail(subject, message):
     try:
-        requests.post(
-            os.getenv('MAILGUN_DOMAIN'),
-            auth=("api", os.getenv('MAILGUN_SECRET')),
-            data={
-                "from": os.getenv('EMAIL_FROM'),
-                "to": [os.getenv('EMAIL_TO')],
-                "subject": subject,
-                "text": message
-            }
-        )
-        writeLockFile()
+        r = requests.post(haRestURL, headers=headers, json=payload, timeout=15)
+    except Timeout:
+        print(f"[{datetime.now()}]: Home assistant request timed out.")
+        return
     except:
-        print(f"[{datetime.now()}]: Could not send email with subject: '{subject}'")
+        print(f"[{datetime.now()}]: Home assistant request failed.")
 
 
-def sendTelegramMessage(message):
+def check(config: dict):
     try:
-        token = os.getenv("TELEGRAM_TOKEN")
-        r = requests.get(
-            f"https://api.telegram.org/bot{token}/sendMessage",
-            params={
-                "chat_id": os.getenv("TELEGRAM_CHAT_ID"),
-                "text": message,
-            })
-        if r.status_code == 200 and r.json()["ok"]:
-            writeLockFile()
-            return
-        raise Exception
+        r = requests.get("https://www.alivex.com/order/participantlist/549", timeout=5)
+    except Timeout:
+        print(f"[{datetime.now()}]: The request timed out.")
+        return
     except:
-        print(f"[{datetime.now()}]: Could not send telegram message.")
+        print(f"[{datetime.now()}]: An unknown error has occurred.")
+        return
+
+    if r.status_code != 200:
+        print(f"[{datetime.now()}]: The request returned a status code of {r.status_code}.")
+        return
+
+    bs = BeautifulSoup(r.text, features="html.parser")
+    matches = bs.select("tbody > tr")
+
+    if len(matches) == 0:
+        print(f"[{datetime.now()}]: Unable to find number of entries.")
+        return
+
+    numEntries = str(len(matches))
+
+    try:
+        with open(config["content_file"], "r") as f:
+            previousMatch = f.read()
+    except:
+        previousMatch = ""
+
+    if previousMatch == numEntries:
+        print(f"[{datetime.now()}]: All same.")
+        return
+
+    # not first call
+    if previousMatch != "":
+        sendNotification(config, "Skyerciyes", f"{numEntries} participants.")
+
+    print(f"[{datetime.now()}]: {numEntries} participants.")
+
+    try:
+        with open(config["content_file"], "w") as f:
+            f.write(numEntries)
+    except:
+        print(f"[{datetime.now()}]: The content file could not be written.")
+        return
 
 
 def main():
-    # read program arguments and environment variables
-    load_dotenv()
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-e', '--email', type=bool, nargs='?', const=True, default=False,
-                        help='Enable notification emails')
-    parser.add_argument('-t', '--telegram', type=bool, nargs='?', const=True, default=False,
-                        help='Enable Telegram notification messages')
-    parser.add_argument('-v', '--verbose', type=bool, nargs='?', const=True, default=False,
-                        help='Verbose output')
-    args = parser.parse_args()
 
-    try:
-        r = requests.get(os.getenv('URL'), timeout=5)
-    except Timeout:
-        print(f"[{datetime.now()}]: The request timed out.")
-        sys.exit(1)
+    with open("config.json", "r") as f:
+        config = json.load(f)
 
-    bs = BeautifulSoup(r.text, features="html.parser")
-    div = bs.find(id="block-views-acik-cagrilar-view-block")
-    if div is None:
-        content = ""
-    else:
-        content = div.text.strip("\n")
-
-    try:
-        with open(os.getenv('CONTENT_FILE'), "r") as f:
-            previousContent = f.read()
-    except:
-        previousContent = ""
-
-    if previousContent == content:
-        print(f"[{datetime.now()}]: All same.")
-        if args.verbose:
-            print(f"{content}")
-        sys.exit(0)
-
-    message = f"[{datetime.now()}]: There is a change: {os.getenv('URL')}\n"
-    message += f"{content}"
-    print(message)
-
-    if args.email:
-        sendEmail("Change!", message)
-    if args.telegram:
-        sendTelegramMessage(message)
-
-    try:
-        with open(os.getenv('CONTENT_FILE'), "w") as f:
-            f.write(content)
-    except:
-        print(f"[{datetime.now()}]: The content file could not be written.")
-        sys.exit(1)
+    check(config)
 
 if __name__ == '__main__':
     main()
