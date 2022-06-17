@@ -1,5 +1,4 @@
 {
-    "content_file" : "/path-to-tmp-file",
     "ha_url" : "home_assistant_url",
     "ha_token" : "home assistant token",
     "ha_device" : "mobile_app"
