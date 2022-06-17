@@ -1,4 +1,5 @@
 import json
+import pathlib
 import requests
 from bs4 import BeautifulSoup
 from requests.exceptions import Timeout
@@ -74,8 +75,9 @@ def check(config: dict):
 
 
 def main():
+    configFilePath = f"{pathlib.Path(__file__).parent}/config.json"
 
-    with open("config.json", "r") as f:
+    with open(configFilePath, "r") as f:
         config = json.load(f)
 
     check(config)
