@@ -1,6 +1,4 @@
 import json
-import os
-from regex import W
 import requests
 from bs4 import BeautifulSoup
 from requests.exceptions import Timeout
