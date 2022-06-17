@@ -2,5 +2,5 @@
 *.log
 .pytest_cache
 .idea/
-config.json
 *__pycache__/
+*.json
