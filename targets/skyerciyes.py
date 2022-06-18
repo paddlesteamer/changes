@@ -1,4 +1,3 @@
-from matplotlib.pyplot import text
 import requests
 
 from datetime import datetime
