@@ -1,3 +1,4 @@
+from matplotlib.pyplot import text
 import requests
 
 from datetime import datetime
@@ -37,7 +38,9 @@ def check():
         print(f"[{datetime.now()}]: All same.")
         return None
 
-    print(f"[{datetime.now()}]: {numEntries} participants.")
+    ultraRunners = str(len(bs.find_all("td", text="64K Ultra")))
+
+    print(f"[{datetime.now()}]: {ultraRunners}/{numEntries} participants.")
 
     try:
         with open(contentFile, "w") as f:
@@ -48,5 +51,5 @@ def check():
 
     return {
         "title": "Skyerciyes",
-        "message": f"{numEntries} participants",
+        "message": f"{ultraRunners}/{numEntries} participants",
     }
