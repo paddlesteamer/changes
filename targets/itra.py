@@ -29,7 +29,7 @@ def check():
     }
 
     try:
-        r = requests.post("https://itra.run/api/runner/find", payload, headers=headers, timeout=5)
+        r = requests.post("https://itra.run/api/runner/find", payload, headers=headers, timeout=10)
     except requests.exceptions.Timeout:
         print(f"[{datetime.now()}]: The request timed out.")
         return None
