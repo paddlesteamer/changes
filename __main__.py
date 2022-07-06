@@ -40,6 +40,18 @@ def runTargets(config: dict):
             print_tb(exc_info=True)
             continue
 
+        try:
+            en = m.enabled()
+        except:
+            print(f"[{datetime.now()}]: Failed to check if {module} is enabled.")
+            print_tb(exc_info=True)
+            
+            # if not implemented yet, assume it is enabled
+            en = True
+
+        if not en:
+            continue
+
         res = None
         try:
             res = m.check()

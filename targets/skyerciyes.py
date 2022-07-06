@@ -3,6 +3,9 @@ import requests
 from datetime import datetime
 from bs4 import BeautifulSoup
 
+def enabled():
+    return True
+
 def check():
     try:
         r = requests.get("https://www.alivex.com/order/participantlist/549", timeout=5)

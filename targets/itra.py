@@ -6,6 +6,9 @@ import requests
 from datetime import datetime
 from bs4 import BeautifulSoup
 
+def enabled():
+    return True
+
 def check():
     configFilePath = f"{pathlib.Path(__file__).parent.absolute()}/itra.json"
 
