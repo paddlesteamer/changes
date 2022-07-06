@@ -1,6 +1,7 @@
-import importlib
+import importlib.machinery
 import json
 import pathlib
+from sys import exc_info
 from traceback import print_tb
 import requests
 from requests.exceptions import Timeout
@@ -28,22 +29,26 @@ def sendNotification(config: dict, title: str, message: str):
         print(f"[{datetime.now()}]: Home assistant request failed.")
 
 def runTargets(config: dict):
-    targetsPath = f"{pathlib.Path(__file__).parent.absolute()}/targets/"
+    try:
+        targetsPath = config["modules_path"]
+    except:
+        targetsPath = f"{pathlib.Path(__file__).parent.absolute()}/targets/"
 
     for target in pathlib.Path(targetsPath).glob("*.py"):
-        module = f"targets.{target.name.rstrip('.py')}"
+        module_name = target.name.rstrip('.py')
 
         try:
-            m = importlib.import_module(module)
+            loader = importlib.machinery.SourceFileLoader(module_name, str(target.absolute()))
+            m = loader.load_module(module_name)
         except:
-            print(f"[{datetime.now()}]: Failed to import {module}.")
+            print(f"[{datetime.now()}]: Failed to load module {module_name}.")
             print_tb(exc_info=True)
             continue
 
         try:
             en = m.enabled()
         except:
-            print(f"[{datetime.now()}]: Failed to check if {module} is enabled.")
+            print(f"[{datetime.now()}]: Failed to check if {module_name} is enabled.")
             print_tb(exc_info=True)
             
             # if not implemented yet, assume it is enabled
@@ -56,7 +61,7 @@ def runTargets(config: dict):
         try:
             res = m.check()
         except:
-            print(f"[{datetime.now()}]: Failed to run {module}.")
+            print(f"[{datetime.now()}]: Failed to run {module_name}.")
             print_tb(exc_info=True)
             continue
 

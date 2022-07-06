@@ -12,6 +12,7 @@ pip3 install -r requirements.txt
  - `ha_url` is the URL of your home assistant instance. If `changes` will run on the same machine with home assistant, it probably would be `http://127.0.0.1:8123`.
  - `ha_token` is long-lived access token for home assistant. You can create yours from home assistant dashboard. Go to your profile, at the bottom of the page you'll see `Long-Lived Access Tokens`. Click `Create Token`.
  - `ha_device` is the name of the notify service that`changes` will call. You can find it from `Developer Tools->Services`. It would be something like `mobile_app_xxx`.
+ - `modules_path` is the path to directory that contains modules. Optional. Default value is `changes/targets`.
 
  ## How to use
 You need to write a python code which implements `check()` method and place it into `targets` directory. `changes` will call `check()` method of each file automatically every time it runs.
